@@ -1,6 +1,15 @@
+import subprocess
+import sys
+
+# Install necessary libraries dynamically
+required_libraries = ["pytz", "plotly"]
+for lib in required_libraries:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", lib])
+
+# Import libraries after installation
 import streamlit as st
-from datetime import datetime
 import pytz
+from datetime import datetime
 import plotly.graph_objects as go
 import math
 
@@ -91,6 +100,3 @@ for label, tz_name in time_zones.items():
     current_time = datetime.now(pytz.timezone(tz_name))
     fig = create_analog_clock(current_time, label)
     st.plotly_chart(fig)
-
-# Refresh the app periodically
-st.experimental_set_query_params(refresh=True)

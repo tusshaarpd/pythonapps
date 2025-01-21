@@ -2,4 +2,3 @@ streamlit
 transformers
 requests
 beautifulsoup4
-torch  # or tensorflow if you prefer

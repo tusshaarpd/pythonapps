@@ -1,9 +1,8 @@
-import tkinter as tk
-import pytz
+import streamlit as st
 from datetime import datetime
+import pytz
+import plotly.graph_objects as go
 import math
-from threading import Thread
-import time
 
 # List of time zones with their labels
 time_zones = {
@@ -16,72 +15,82 @@ time_zones = {
     "Antarctica": "Antarctica/Palmer"
 }
 
-# Clock dimensions
-CLOCK_RADIUS = 50
-WINDOW_WIDTH = 300
-WINDOW_HEIGHT = len(time_zones) * 150
+# Function to create an analog clock using Plotly
+def create_analog_clock(time, timezone_label):
+    # Get current hour, minute, and second
+    hours = time.hour % 12
+    minutes = time.minute
+    seconds = time.second
 
-# Function to create and update analog clock
-def draw_clock(canvas, x, y, timezone):
-    def update_clock():
-        while True:
-            # Get current time
-            current_time = datetime.now(pytz.timezone(timezone))
-            hours, minutes, seconds = current_time.hour % 12, current_time.minute, current_time.second
+    # Calculate angles for clock hands
+    hour_angle = (hours * 30) + (minutes * 0.5) - 90  # 30 degrees per hour
+    minute_angle = (minutes * 6) - 90  # 6 degrees per minute
+    second_angle = (seconds * 6) - 90  # 6 degrees per second
 
-            # Calculate angles for clock hands
-            sec_angle = math.radians(seconds * 6 - 90)
-            min_angle = math.radians(minutes * 6 - 90)
-            hour_angle = math.radians((hours * 30) + (minutes * 0.5) - 90)
+    # Base circle for the clock
+    fig = go.Figure()
 
-            # Draw clock face
-            canvas.delete("clock_" + timezone)
-            canvas.create_oval(x - CLOCK_RADIUS, y - CLOCK_RADIUS, x + CLOCK_RADIUS, y + CLOCK_RADIUS, fill="white", outline="black", tags="clock_" + timezone)
+    # Add clock face
+    fig.add_trace(go.Scatterpolar(
+        r=[1] * 12,
+        theta=[i * 30 for i in range(12)],
+        mode='markers+text',
+        marker=dict(size=10),
+        text=[str(i if i != 0 else 12) for i in range(12)],
+        textposition="top center",
+        hoverinfo="none"
+    ))
 
-            # Draw hour hand
-            canvas.create_line(
-                x, y, x + CLOCK_RADIUS * 0.5 * math.cos(hour_angle), y + CLOCK_RADIUS * 0.5 * math.sin(hour_angle),
-                width=4, fill="black", tags="clock_" + timezone
-            )
+    # Add hour hand
+    fig.add_trace(go.Scatterpolar(
+        r=[0, 0.5],
+        theta=[0, hour_angle],
+        mode='lines',
+        line=dict(color='black', width=6),
+        hoverinfo="none"
+    ))
 
-            # Draw minute hand
-            canvas.create_line(
-                x, y, x + CLOCK_RADIUS * 0.7 * math.cos(min_angle), y + CLOCK_RADIUS * 0.7 * math.sin(min_angle),
-                width=3, fill="blue", tags="clock_" + timezone
-            )
+    # Add minute hand
+    fig.add_trace(go.Scatterpolar(
+        r=[0, 0.7],
+        theta=[0, minute_angle],
+        mode='lines',
+        line=dict(color='blue', width=4),
+        hoverinfo="none"
+    ))
 
-            # Draw second hand
-            canvas.create_line(
-                x, y, x + CLOCK_RADIUS * 0.9 * math.cos(sec_angle), y + CLOCK_RADIUS * 0.9 * math.sin(sec_angle),
-                width=2, fill="red", tags="clock_" + timezone
-            )
+    # Add second hand
+    fig.add_trace(go.Scatterpolar(
+        r=[0, 0.9],
+        theta=[0, second_angle],
+        mode='lines',
+        line=dict(color='red', width=2),
+        hoverinfo="none"
+    ))
 
-            # Show time below the clock
-            canvas.create_text(x, y + CLOCK_RADIUS + 20, text=current_time.strftime("%Y-%m-%d %H:%M:%S"), tags="clock_" + timezone)
-            canvas.create_text(x, y + CLOCK_RADIUS + 40, text=timezone, tags="clock_" + timezone)
+    # Layout adjustments
+    fig.update_layout(
+        polar=dict(
+            angularaxis=dict(showline=False, tickmode='array', ticks='', showgrid=False),
+            radialaxis=dict(visible=False)
+        ),
+        showlegend=False,
+        margin=dict(l=20, r=20, t=30, b=20),
+        title=dict(text=f"Time in {timezone_label}<br>{time.strftime('%Y-%m-%d %H:%M:%S')}", x=0.5),
+    )
 
-            # Pause for smooth updates
-            time.sleep(1)
+    return fig
 
-    # Run the clock update in a thread
-    Thread(target=update_clock, daemon=True).start()
+# Streamlit app
+st.title("World Time Analog Clocks")
 
+st.write("### Analog clocks for different time zones across continents")
 
-# Main application window
-def create_app():
-    root = tk.Tk()
-    root.title("World Time Analog Clocks")
-    canvas = tk.Canvas(root, width=WINDOW_WIDTH, height=WINDOW_HEIGHT, bg="lightgray")
-    canvas.pack()
+# Loop through time zones and display clocks
+for label, tz_name in time_zones.items():
+    current_time = datetime.now(pytz.timezone(tz_name))
+    fig = create_analog_clock(current_time, label)
+    st.plotly_chart(fig)
 
-    # Draw clocks for each time zone
-    y_offset = 80
-    for idx, (label, tz) in enumerate(time_zones.items()):
-        x, y = WINDOW_WIDTH // 2, y_offset + idx * 150
-        draw_clock(canvas, x, y, tz)
-
-    root.mainloop()
-
-
-# Run the application
-create_app()
+# Refresh the app periodically
+st.experimental_set_query_params(refresh=True)
